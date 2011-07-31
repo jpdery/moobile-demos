@@ -11,6 +11,7 @@ Demo.ViewController.Home = new Class({
 		this.parent();
 		this.transitionList = this.view.transitionList;
 		this.transitionList.setStyle(Moobile.UI.ListStyle.Grouped);
+		this.navigationBar.setStyle(Moobile.UI.BarStyle.DefaultTranslucent);
 		return this;
 	},
 
@@ -41,7 +42,9 @@ Demo.ViewController.Home = new Class({
 				break;
 		}
 
-		this.viewControllerStack.pushViewControllerFrom('views/transition.html', transition);
+		var viewController = new Demo.ViewController.Transition('views/transition.html');
+
+		this.viewControllerStack.pushViewController(viewController, transition);
 
 		return this;
 	},
@@ -54,7 +57,7 @@ Demo.ViewController.Home = new Class({
 
 });
 
-Demo.ViewController.AlbumDetail = new Class({
+Demo.ViewController.Transition = new Class({
 
 	Extends: Moobile.ViewController,
 

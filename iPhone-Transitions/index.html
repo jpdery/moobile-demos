@@ -4,7 +4,7 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 
-		<title>UI Demo | Moobile</title>
+		<title>Transition Demo | Moobile</title>
 
 		<link rel="stylesheet" href="css/iphone.css" />
 		<link rel="stylesheet" href="css/styles.css" />
@@ -23,18 +23,39 @@
 
 			window.addEvent('ready', function() {
 
-				var mainWindow = new Moobile.Window('main-window')
-					.startup()
-					.getRootViewController()
-					.pushViewControllerFrom('views/home.html', new Moobile.ViewTransition.Fade);
+				//
+				// Initialize the window controller
+				//
+
+				var windowController = new Moobile.WindowController('window');
+
+				//
+				// Pick up the root view controller. In this case it's the
+				// navigation view controller (which inherit ViewControllerStack)
+				//
+
+				var viewControllerStack = windowController.getRootViewController();
+
+				//
+				// Push the first view into the view controller stck
+				//
+
+				viewControllerStack.pushViewController(
+					new Demo.ViewController.Home('views/home.html'),
+					new Moobile.ViewTransition.Fade
+				);
 
 			});
 
 		// "]]>
 		</script>
 
-		<div id="main-window">
-			<div data-role="view" data-view="Moobile.ViewStack" data-view-controller="Moobile.ViewControllerStack.Navigation"></div>
+		<div id="window">
+			<div data-role="view-controller" data-view-controller="Moobile.ViewControllerStack.Navigation">
+				<div data-role="view" data-view="Moobile.ViewStack">
+
+				</div>
+			</div>
 		</div>
 
 	</body>

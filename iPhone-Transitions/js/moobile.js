@@ -790,6 +790,14 @@ provides:
 			return this;
 		},
 
+		isChild: function() {
+			return document.documentElement.contains(this);
+		},
+
+		isOrphan: function() {
+			return this.isChild == false();
+		},
+
 		ingest: function(string) {
 			var match = string.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
 			if (match) string = match[1];
@@ -974,6 +982,51 @@ if (Browser.isMobile) {
 	});
 
 }
+
+/*
+---
+
+name: Event.Loaded
+
+description: Provide an element that will be automatically fired when added
+             after being fired for the first time.
+
+license: MIT-style license.
+
+author:
+	- Jean-Philippe Dery (jeanphilippe.dery@gmail.com)
+
+requires:
+	- Core/Event
+	- Core/Element.Event
+	- Custom-Event/Element.defineCustomEvent
+
+provides:
+	- Event.Loaded
+
+...
+*/
+
+(function() {
+
+	var executed = false;
+
+	Element.defineCustomEvent('loaded', {
+
+		condition: function(e) {
+			executed = true;
+			return true;
+		},
+
+		onSetup: function() {
+			if (executed) {
+				this.fireEvent('loaded');
+			}
+		}
+
+	});
+
+})();
 
 /*
 ---
@@ -1390,11 +1443,9 @@ Moobile.Request = new Class({
 /*
 ---
 
-name: Request.ViewController
+name: Request.View
 
-description: Provides a method to load a view controller from a remote location.
-             Instanciate the view controller based on data properties stored
-             on the requested element.
+description: Provides a method to load a view element from a remote location.
 
 license: MIT-style license.
 
@@ -1406,7 +1457,6 @@ requires:
 	- Core/Element
 	- Core/Element.Event
 	- More/Events.Pseudos
-	- Class.Instanciate
 	- Element.Extras
 	- Request
 
@@ -1416,7 +1466,7 @@ provides:
 ...
 */
 
-Moobile.Request.ViewController = new Class({
+Moobile.Request.View = new Class({
 
 	Extends: Moobile.Request,
 
@@ -1433,12 +1483,12 @@ Moobile.Request.ViewController = new Class({
 	},
 
 	attachEvents: function() {
-		this.addEvent('success', this.bound('onViewControllerLoad'));
+		this.addEvent('success', this.bound('onViewLoad'));
 		return this;
 	},
 
 	detachEvents: function() {
-		this.removeEvent('success', this.bound('onViewControllerLoad'));
+		this.removeEvent('success', this.bound('onViewLoad'));
 		return this;
 	},
 
@@ -1457,9 +1507,9 @@ Moobile.Request.ViewController = new Class({
 
 	load: function(url, callback) {
 
-		var viewController = this.getCache(url);
-		if (viewController) {
-			callback.call(this, viewController);
+		var viewElement = this.getCache(url);
+		if (viewElement) {
+			callback.call(this, viewElement);
 			return this;
 		}
 
@@ -1471,24 +1521,12 @@ Moobile.Request.ViewController = new Class({
 		return this;
 	},
 
-	onViewControllerLoad: function(response) {
-		var element = new Element('div').ingest(response).getElement('[data-role=view]');
-		if (element) {
-			
-			var viewController = element.get('data-view-controller') || 'Moobile.ViewController';
-			
-			var view = element.get('data-view');
-			if (view) {
-				view = Class.instanciate(view, element);
-				viewController = Class.instanciate(viewController, view);
-			} else {
-				viewController = Class.instanciate(viewController, element);
-			}
+	onViewLoad: function(response) {
 
-			this.setCache(this.options.url, viewController);
-			
-			this.fireEvent('load', viewController);
-
+		var viewElement = new Element('div').ingest(response).getElement('[data-role=view]');
+		if (viewElement) {
+			this.setCache(this.options.url, viewElement);
+			this.fireEvent('load', viewElement);
 			return this;
 		}
 
@@ -1659,6 +1697,14 @@ Moobile.UI.Element = new Class({
 		return this;
 	},
 
+	isChild: function() {
+		return this.element.isChild();
+	},
+
+	isOrphan: function() {
+		return this.element.isOrphan();
+	},
+
 	adopt: function() {
 		this.element.adopt.apply(this.element, arguments);
 		return this;
@@ -1679,9 +1725,16 @@ Moobile.UI.Element = new Class({
 	},
 
 	hook: function(element, where, context) {
-		if (where == 'header') where = 'top';
-		if (where == 'footer') where = 'bottom';
-		return context ? context.inject(element, where) : this.grab(element, where);
+
+		if (element.isChild())
+			return this;
+
+		if (context) {
+			if (where == 'header') where = 'top';
+			if (where == 'footer') where = 'bottom';
+		}
+
+		return context ? element.inject(context, where) : this.grab(element, where);
 	},
 
 	empty: function() {
@@ -1786,10 +1839,18 @@ Moobile.UI.Control = new Class({
 	},
 
 	addChildControl: function(control, where, context) {
+
+		this.childControls.push(control);
+
 		this.willAddChildControl(control);
 		this.hook(control, where, context);
-		this.bindChildControl(control);
+		control.viewWillChange(this.view);
+		control.view = this.view;
+		control.viewDidChange(this.view);
 		this.didAddChildControl(control);
+
+		Object.defineMember(this, control, control.name);
+
 		return this;
 	},
 
@@ -1821,16 +1882,6 @@ Moobile.UI.Control = new Class({
 		return this;
 	},
 
-	bindChildControl: function(control) {
-		this.childControls.push(control);
-		control.viewWillChange(this.view);
-		control.view = this.view;
-		control.viewDidChange(this.view);
-		this.didBindChildControl(control);
-		Object.defineMember(this, control, control.name);
-		return this;
-	},
-
 	attachChildControls: function() {
 		var attach = this.bound('attachChildControl');
 		var filter = this.bound('filterChildControl');
@@ -1841,7 +1892,7 @@ Moobile.UI.Control = new Class({
 	attachChildControl: function(element) {
 		var control = element.get('data-control');
 		if (control == null) throw new Error('You have to define the control class using the data-control attribute.');
-		this.bindChildControl(Class.instanciate(control, element));
+		this.addChildControl(Class.instanciate(control, element));
 		return this;
 	},
 
@@ -1962,12 +2013,6 @@ Moobile.UI.Control = new Class({
 		return this;
 	},
 
-	hook: function(element, where, context) {
-		if (where == 'header') where = 'top';
-		if (where == 'footer') where = 'bottom';
-		return context ? element.inject(context, where) : this.grab(element, where);
-	},
-
 	empty: function() {
 		this.content.empty();
 		return this;
@@ -1986,10 +2031,6 @@ Moobile.UI.Control = new Class({
 	},
 
 	didAddChildControl: function(childControl) {
-		return this;
-	},
-
-	didBindChildControl: function(childControl) {
 		return this;
 	},
 
@@ -2200,7 +2241,7 @@ Moobile.UI.ButtonGroup = new Class({
 		return this.selectedButton;
 	},
 
-	didBindChildControl: function(button) {
+	didAddChildControl: function(button) {
 		button.addEvent('click', this.bound('onButtonClick'));
 		this.parent();
 		return this;
@@ -2449,13 +2490,13 @@ Moobile.UI.Bar.NavigationItem = new Class({
 
 	buildLeftBarButtonContainer: function() {
 		this.leftBarButtonContainer = new Element('div.' + this.options.className + '-left');
-		this.leftBarButtonContainer.inject(this.content, 'top') ;
+		this.leftBarButtonContainer.inject(this.titleContainer, 'before') ;
 		return this;
 	},
 
 	buildRightBarButtonContainer: function() {
 		this.rightBarButtonContainer = new Element('div.' + this.options.className + '-right');
-		this.rightBarButtonContainer.inject(this.content, 'bottom');
+		this.rightBarButtonContainer.inject(this.titleContainer, 'after');
 		return this;
 	},
 
@@ -2904,7 +2945,7 @@ Moobile.UI.List = new Class({
 		return this.selectedItems;
 	},
 
-	didBindChildControl: function(item) {
+	didAddChildControl: function(item) {
 		item.addEvent('click', this.bound('onClick'));
 		item.addEvent('mouseup', this.bound('onMouseUp'));
 		item.addEvent('mousedown', this.bound('onMouseDown'));
@@ -3088,15 +3129,23 @@ Moobile.View = new Class({
 	},
 
 	destroy: function() {
-		this.started = false;
+
+		this.removeFromParentView();
+
 		this.detachEvents();
 		this.destroyChildViews();
 		this.destroyChildControls();
 		this.destroyChildElements();
+
 		this.release();
+
 		this.parentView = null;
 		this.window = null;
+		this.content = null;
+		this.started = false;
+
 		this.parent();
+
 		return this;
 	},
 
@@ -3117,10 +3166,22 @@ Moobile.View = new Class({
 	},
 
 	addChildView: function(view, where, context) {
+
+		this.childViews.push(view);
+
 		this.willAddChildView(view);
 		this.hook(view, where, context);
-		this.bindChildView(view);
+		view.parentViewWillChange(this);
+		view.parentView = this;
+		view.window = this.window;
+		view.parentViewDidChange(this);
 		this.didAddChildView(view);
+
+		view.startup();
+		view.attachEvents();
+
+		Object.defineMember(this, view, view.name);
+
 		return this;
 	},
 
@@ -3154,19 +3215,6 @@ Moobile.View = new Class({
 		return this;
 	},
 
-	bindChildView: function(view) {
-		this.childViews.push(view);
-		view.parentViewWillChange(this);
-		view.parentView = this;
-		view.window = this.window;
-		view.parentViewDidChange(this);
-		this.didBindChildView(view);
-		view.startup();
-		view.attachEvents();
-		Object.defineMember(this, view, view.name);
-		return this;
-	},
-
 	attachChildViews: function() {
 		var attach = this.bound('attachChildView');
 		var filter = this.bound('filterChildView');
@@ -3177,7 +3225,7 @@ Moobile.View = new Class({
 	attachChildView: function(element) {
 		var view = element.get('data-view');
 		if (view == null) throw new Error('You have to define the view class using the data-view attribute.');
-		this.bindChildView(Class.instanciate(view, element));
+		this.addChildView(Class.instanciate(view, element));
 		return this;
 	},
 
@@ -3198,10 +3246,18 @@ Moobile.View = new Class({
 	},
 
 	addChildControl: function(control, where, context) {
+
+		this.childControls.push(control);
+
 		this.willAddChildControl(control);
 		this.hook(control, where, context);
-		this.bindChildControl(control);
+		control.viewWillChange(this);
+		control.view = this;
+		control.viewDidChange(this);
 		this.didAddChildControl(control);
+
+		Object.defineMember(this, control, control.name);
+
 		return this;
 	},
 
@@ -3228,16 +3284,6 @@ Moobile.View = new Class({
 		return this;
 	},
 
-	bindChildControl: function(control) {
-		this.childControls.push(control);
-		control.viewWillChange(this);
-		control.view = this;
-		control.viewDidChange(this);
-		this.didBindChildControl(control);
-		Object.defineMember(this, control, control.name);
-		return this;
-	},
-
 	attachChildControls: function() {
 		var attach = this.bound('attachChildControl');
 		var filter = this.bound('filterChildControl');
@@ -3248,7 +3294,7 @@ Moobile.View = new Class({
 	attachChildControl: function(element) {
 		var control = element.get('data-control');
 		if (control == null) throw new Error('You have to define the control class using the data-control attribute.');
-		this.bindChildControl(Class.instanciate(control, element));
+		this.addChildControl(Class.instanciate(control, element));
 		return this;
 	},
 
@@ -3269,10 +3315,15 @@ Moobile.View = new Class({
 	},
 
 	addChildElement: function(element, where, context) {
+
+		this.childElements.push(element);
+
 		this.willAddChildElement(element);
 		this.hook(element, where, context);
-		this.bindChildElement(element);
 		this.didAddChildElement(element);
+
+		Object.defineMember(this, element, element.get('data-name'));
+
 		return this;
 	},
 
@@ -3284,13 +3335,6 @@ Moobile.View = new Class({
 
 	getChildElements: function() {
 		return this.childElements;
-	},
-
-	bindChildElement: function(element) {
-		this.childElements.push(element);
-		this.didBindChildElement(element);
-		Object.defineMember(this, element, element.get('data-name'));
-		return this;
 	},
 
 	removeChildElement: function(element) {
@@ -3311,7 +3355,7 @@ Moobile.View = new Class({
 	},
 
 	attachChildElement: function(element) {
-		this.bindChildElement(element);
+		this.addChildElement(element);
 		return this;
 	},
 
@@ -3351,12 +3395,6 @@ Moobile.View = new Class({
 		return this;
 	},
 
-	hook: function(element, where, context) {
-		if (where == 'header') where = 'top';
-		if (where == 'footer') where = 'bottom';
-		return context ? element.inject(context, where) : this.grab(element, where);
-	},
-
 	empty: function() {
 		this.content.empty();
 		return this;
@@ -3392,10 +3430,6 @@ Moobile.View = new Class({
 		return this;
 	},
 
-	didBindChildView: function(childView) {
-		return this;
-	},
-
 	willRemoveChildView: function(childView) {
 		return this;
 	},
@@ -3409,10 +3443,6 @@ Moobile.View = new Class({
 	},
 
 	didAddChildControl: function(childControl) {
-		return this;
-	},
-
-	didBindChildControl: function(childControl) {
 		return this;
 	},
 
@@ -3437,10 +3467,6 @@ Moobile.View = new Class({
 	},
 
 	didRemoveChildElement: function(childElement) {
-		return this;
-	},
-
-	didBindChildElement: function(childElement) {
 		return this;
 	},
 
@@ -3485,18 +3511,18 @@ provides:
 */
 
 (function() {
-	
+
 	var count = 0;
-	
+
 	Moobile.View.Scroll = new Class({
 
 		Extends: Moobile.View,
 
-		outerElement: null,
+		scrollableWrapper: null,
 
-		innerElement: null,
+		scrollableContent: null,
 
-		innerElementSize: null,
+		scrollableContentSize: null,
 
 		scroller: null,
 
@@ -3506,23 +3532,16 @@ provides:
 
 		build: function() {
 			this.parent();
+
 			this.addClass(this.options.className + '-scroll');
-			this.buildInnerElement();
-			this.buildOuterElement();
-			return this;
-		},
 
-		buildInnerElement: function() {
-			this.innerElement = new Element('div.' + this.options.className + '-scroll-inner');
-			this.innerElement.adopt(this.content.childElements);
-			this.adopt(this.innerElement);
-			return this;
-		},
+			this.scrollableWrapper = new Element('div.' + this.options.className + '-scrollable-wrapper');
+			this.scrollableContent = new Element('div.' + this.options.className + '-scrollable-content');
+			this.scrollableContent.adopt(this.content.childElements);
+			this.scrollableWrapper.adopt(this.scrollableContent);
 
-		buildOuterElement: function() {
-			this.outerElement = new Element('div.' + this.options.className + '-scroll-outer');
-			this.outerElement.adopt(this.content.childElements);
-			this.adopt(this.outerElement);
+			this.content.grab(this.scrollableWrapper);
+
 			return this;
 		},
 
@@ -3536,7 +3555,7 @@ provides:
 			this.disableScroller();
 			this.detachScroller();
 			this.outerElement = null;
-			this.innerElement = null;
+			this.scrollableContent = null;
 			this.parent();
 			return this;
 		},
@@ -3552,7 +3571,7 @@ provides:
 		},
 
 		createScroller: function() {
-			return new iScroll(this.outerElement, { desktopCompatibility: true, hScroll: true, vScroll: true });
+			return new iScroll(this.scrollableWrapper, { desktopCompatibility: true, hScroll: true, vScroll: true });
 		},
 
 		enableScroller: function() {
@@ -3568,7 +3587,7 @@ provides:
 		disableScroller: function() {
 			if (this.scroller) {
 				this.updateScrollerAutomatically(false);
-				this.scrolled = this.innerElement.getStyle('-webkit-transform');
+				this.scrolled = this.scrollableContent.getStyle('-webkit-transform');
 				this.scrolled = this.scrolled.match(/translate3d\(-*(\d+)px, -*(\d+)px, -*(\d+)px\)/);
 				this.scrolled = this.scrolled[2];
 				this.scroller.destroy();
@@ -3579,8 +3598,8 @@ provides:
 
 		updateScroller: function() {
 			if (this.scroller) {
-				if (this.innerElementSize != this.innerElement.getScrollSize().y) {
-					this.innerElementSize  = this.innerElement.getScrollSize().y;
+				if (this.scrollableContentSize != this.scrollableContent.getScrollSize().y) {
+					this.scrollableContentSize  = this.scrollableContent.getScrollSize().y;
 					this.scroller.refresh();
 				}
 			}
@@ -3590,6 +3609,29 @@ provides:
 		updateScrollerAutomatically: function(automatically) {
 			clearInterval(this.scrollerUpdateInterval);
 			if (automatically) this.scrollerUpdateInterval = this.updateScroller.periodical(250, this);
+			return this;
+		},
+
+		adopt: function() {
+			this.scrollableContent.adopt.apply(this.content, arguments);
+			return this;
+		},
+
+		grab: function(element, where) {
+console.log('Where: ' + where);
+			if (where == 'header') {
+				console.log('TEST');
+				this.content.grab(element, 'top')
+				return this;
+			}
+
+			if (where == 'footer') {
+				this.content.grab(element, 'bottom')
+				return this;
+			}
+
+			this.scrollableContent.grab(element, where);
+
 			return this;
 		},
 
@@ -3614,8 +3656,8 @@ provides:
 			e.preventDefault();
 		}
 
-	});	
-	
+	});
+
 })();
 
 /*
@@ -4115,6 +4157,7 @@ requires:
 	- Core/Element
 	- Core/Element.Event
 	- Class-Extras/Class.Binds
+	- Event.Loaded
 
 provides:
 	- ViewController
@@ -4132,6 +4175,8 @@ Moobile.ViewController = new Class({
 		Class.Binds
 	],
 
+	name: null,
+
 	window: null,
 
 	view: null,
@@ -4142,30 +4187,53 @@ Moobile.ViewController = new Class({
 
 	viewControllerPanel: null,
 
+	viewRequest: null,
+
+	viewLoaded: false,
+
 	parentViewController: null,
 
 	navigationBar: null,
 
 	started: false,
 
-	initialize: function(view) {
-		this.attachView(view);
+	initialize: function(viewSource) {
+
+		var viewElement = document.id(viewSource);
+		if (viewElement) {
+			this.loadViewFromElement(viewElement);
+			return this;
+		}
+
+		this.loadViewFromUrl(viewSource);
+
 		return this;
 	},
 
-	loadView: function(element) {
-		this.view = new Moobile.View(element);
+	loadViewFromElement: function(viewElement) {
+		this.loadView(viewElement);
+		this.viewLoaded = true;
+		this.fireEvent('loaded');
 		return this;
 	},
 
-	attachView: function(view) {
-		if (view instanceof Element) return this.loadView(view);
-		this.view = view;
+	loadViewFromUrl: function(viewUrl) {
+
+		if (this.viewRequest == null) {
+			this.viewRequest = new Moobile.Request.View()
+		}
+
+		this.viewRequest.cancel();
+		this.viewRequest.load(viewUrl, this.bound('loadViewFromElement'));
+
 		return this;
 	},
 
-	detachView: function() {
-		this.view = null;
+	loadView: function(viewElement) {
+		this.view = Class.instanciate(
+			viewElement.get('data-view') || 'Moobile.View',
+			viewElement
+		);
 		return this;
 	},
 
@@ -4190,19 +4258,24 @@ Moobile.ViewController = new Class({
 	destroy: function() {
 		this.started = false;
 		this.detachEvents();
+		this.release();
+		this.window = null;
+		this.view.destroy();
+		this.view = null;
 		this.viewTransition = null;
 		this.viewControllerStack = null;
 		this.viewControllerPanel = null;
 		this.parentViewController = null;
 		this.navigationBar = null;
-		this.window = null;
-		this.release();
-		this.detachView();
 		return this;
 	},
 
 	isStarted: function() {
 		return this.started;
+	},
+
+	isViewLoaded: function() {
+		return this.viewLoaded;
 	},
 
 	init: function() {
@@ -4276,10 +4349,27 @@ Moobile.ViewControllerCollection = new Class({
 	},
 
 	addViewController: function(viewController, where, context) {
+
+		if (viewController.isViewLoaded() == false) {
+			viewController.addEvent('loaded', function() {
+				this.addViewController(viewController, where, context);
+			}.bind(this));
+			return this;
+		}
+
+		this.viewControllers.push(viewController);
+
 		this.willAddViewController(viewController);
 		this.view.addChildView(viewController.view, where, context);
-		this.bindViewController(viewController);
+		viewController.viewControllerStack = this.viewControllerStack;
+		viewController.viewControllerPanel = this.viewControllerPanel;
+		viewController.parentViewController = this;
 		this.didAddViewController(viewController);
+
+		viewController.startup();
+
+		Object.defineMember(this, viewController, viewController.name);
+
 		return this;
 	},
 
@@ -4308,28 +4398,32 @@ Moobile.ViewControllerCollection = new Class({
 	},
 
 	attachViewControllers: function() {
-		this.view.getChildViews().each(this.bound('attachViewController'));
+		var filter = this.bound('filterViewController');
+		var attach = this.bound('attachViewController');
+		this.view.getElements('[data-role=view-controller]').filter(filter).each(attach);
 		return this;
 	},
 
-	bindViewController: function(viewController) {
-		this.viewControllers.push(viewController);
-		viewController.viewControllerStack = this.viewControllerStack;
-		viewController.viewControllerPanel = this.viewControllerPanel;
-		viewController.parentViewController = this;
-		this.didBindViewController(viewController);
-		viewController.startup();
-		Object.defineMember(this, viewController, viewController.view.getProperty('data-view-controller-name'));
-		return this;
-	},
+	attachViewController: function(element) {
+		var viewControllerClass = element.get('data-view-controller');
+		if (viewControllerClass) {
 
-	attachViewController: function(view) {
-		var viewController = view.getProperty('data-view-controller');
-		if (viewController) {
-			viewController = Class.instanciate(viewController, view);
-			this.bindViewController(viewController);
+			var viewElement = element.getElement('[data-role=view]');
+			if (viewElement == null) {
+				throw new Error('You must define a view element under view-controller element');
+			}
+
+			var viewController = Class.instanciate(viewControllerClass, viewElement);
+			viewController.name = element.get('data-name');
+			this.addViewController(viewController);
+
+			element.grab(viewElement, 'before').destroy();
 		}
 		return this;
+	},
+
+	filterViewController: function(element) {
+		return element.getParent('[data-role=view-controller]') == this.view.element;
 	},
 
 	destroyViewControllers: function() {
@@ -4349,10 +4443,6 @@ Moobile.ViewControllerCollection = new Class({
 	},
 
 	didAddViewController: function(viewController) {
-		return this;
-	},
-
-	didBindViewController: function(viewController) {
 		return this;
 	},
 
@@ -4399,30 +4489,16 @@ Moobile.ViewControllerStack = new Class({
 		return this;
 	},
 
-	loadViewControllerFrom: function(url, callback) {
-
-		if (this.viewControllerRequest == null) {
-			this.viewControllerRequest = new Moobile.Request.ViewController();
-		}
-
-		this.viewControllerRequest.cancel();
-		this.viewControllerRequest.load(url, callback);
-
-		return this;
-	},
-
-	pushViewControllerFrom: function(url, viewTransition) {
-		this.loadViewControllerFrom(url,
-			function(viewController) {
-				this.pushViewController(viewController, viewTransition);
-			}.bind(this)
-		);
-		return this;
-	},
-
 	pushViewController: function(viewController, viewTransition) {
 
-		this.window.disableUserInput();
+		this.window.disableInput();
+
+		if (viewController.isViewLoaded() == false) {
+			viewController.addEvent('loaded', function() {
+				this.pushViewController(viewController, viewTransition);
+			}.bind(this));
+			return this;
+		}
 
 		var viewControllerPushed = viewController; // ease of understanding
 
@@ -4475,7 +4551,7 @@ Moobile.ViewControllerStack = new Class({
 
 		viewControllerPushed.viewDidEnter();
 
-		this.window.enableUserInput();
+		this.window.enableInput();
 
 		return this;
 	},
@@ -4494,12 +4570,8 @@ Moobile.ViewControllerStack = new Class({
 				viewControllerToRemove.viewDidLeave();
 				this.removeViewController(viewControllerToRemove);
 
-				var viewToRemove = viewControllerToRemove.view;
 				viewControllerToRemove.destroy();
 				viewControllerToRemove = null;
-				viewToRemove.destroy();
-				viewToRemove = null;
-
 			}
 		}
 
@@ -4513,7 +4585,7 @@ Moobile.ViewControllerStack = new Class({
 		if (this.viewControllers.length <= 1)
 			return this;
 
-		this.window.disableUserInput();
+		this.window.disableInput();
 
 		var viewControllerPopped = this.viewControllers.lastItemAt(0);
 		var viewControllerBefore = this.viewControllers.lastItemAt(1);
@@ -4546,18 +4618,15 @@ Moobile.ViewControllerStack = new Class({
 
 		this.didPopViewController(viewControllerPopped);
 
-		var viewPopped = viewControllerPopped.view;
 		viewControllerPopped.destroy();
 		viewControllerPopped = null;
-		viewPopped.destroy();
-		viewPopped = null;
 
-		this.window.enableUserInput();
+		this.window.enableInput();
 
 		return this;
 	},
 
-	didBindViewController: function(viewController) {
+	didAddViewController: function(viewController) {
 		viewController.viewControllerStack = this;
 		this.parent();
 		return this;
@@ -4606,7 +4675,7 @@ Moobile.ViewControllerStack.Navigation = new Class({
 
 	Extends: Moobile.ViewControllerStack,
 
-	didBindViewController: function(viewController) {
+	didAddViewController: function(viewController) {
 
 		this.parent(viewController);
 
@@ -4669,7 +4738,7 @@ Moobile.ViewControllerPanel = new Class({
 
 	Extends: Moobile.ViewControllerCollection,
 
-	didBindViewController: function(viewController) {
+	didAddViewController: function(viewController) {
 		viewController.viewControllerPanel = this;
 		this.parent();
 		return this;
@@ -4701,11 +4770,7 @@ Moobile.Window = new Class({
 
 	Extends: Moobile.View,
 
-	viewController: null,
-
-	rootViewController: null,
-
-	userInputEnabled: true,
+	inputEnabled: true,
 
 	userInputMask: null,
 
@@ -4713,22 +4778,104 @@ Moobile.Window = new Class({
 		className: 'window'
 	},
 
-	init: function() {
-		this.viewController = new Moobile.ViewControllerCollection(this);
-		this.viewController.startup();
-		this.parent();
-		return this;
-	},
-
-	release: function() {
-		this.viewController.destroy();
-		this.viewController = null;
-		this.parent();
-		return this;
-	},
-
 	filterChildView: function(element) {
 		return element.getParent('[data-role=view]') == null;
+	},
+
+	getOrientation: function() {
+		var o = Math.abs(window.orientation);
+		switch (o) {
+			case  0: return 'portrait';
+			case 90: return 'landscape';
+		}
+	},
+
+	enableInput: function() {
+		if (this.inputEnabled == false) {
+			this.inputEnabled = true;
+			this.hideMask();
+		}
+		return this;
+	},
+
+	disableInput: function() {
+		if (this.inputEnabled == true) {
+			this.inputEnabled = false;
+			this.showMask();
+		}
+	},
+
+	isinputEnabled: function() {
+		return this.inputEnabled;
+	},
+
+	showMask: function() {
+		this.userInputMask = new Element('div.' + this.options.className + '-mask');
+		this.userInputMask.inject(this.element);
+		return this;
+	},
+
+	hideMask: function() {
+		this.userInputMask.destroy();
+		this.userInputMask = null;
+		return this;
+	},
+
+	didAddChildView: function(view) {
+		view.window = this;
+		view.parentView = null;
+		this.parent(view);
+		return this;
+	}
+
+});
+
+/*
+---
+
+name: WindowController
+
+description: Provides the starting poing view controller inside the window.
+
+license: MIT-style license.
+
+authors:
+	- Jean-Philippe Dery (jeanphilippe.dery@gmail.com)
+
+requires:
+	- ViewControllerCollection
+
+provides:
+	- WindowController
+
+...
+*/
+
+Moobile.WindowController = new Class({
+
+	Extends: Moobile.ViewControllerCollection,
+
+	rootViewController: null,
+
+	initialize: function(viewElement) {
+		this.loadView(viewElement);
+		this.startup();
+		return this;
+	},
+
+	startup: function() {
+		this.parent();
+		this.window = this.view;
+		return this;
+	},
+
+	loadView: function(viewElement) {
+		this.view = new Moobile.Window(viewElement);
+		return this;
+	},
+
+	filterViewController: function(element) {
+		return element.getParent('[data-role=view-controller]') == null;
 	},
 
 	setRootViewController: function(rootViewController) {
@@ -4749,52 +4896,12 @@ Moobile.Window = new Class({
 	},
 
 	getRootViewController: function() {
-		return this.rootViewController || this.viewController.getViewControllers()[0];
+		return this.rootViewController;
 	},
 
-	getOrientation: function() {
-		var o = Math.abs(window.orientation);
-		switch (o) {
-			case  0: return 'portrait';
-			case 90: return 'landscape';
-		}
-	},
-
-	enableUserInput: function() {
-		if (this.userInputEnabled == false) {
-			this.userInputEnabled = true;
-			this.destroyUserInputMask();
-		}
-		return this;
-	},
-
-	disableUserInput: function() {
-		if (this.userInputEnabled == true) {
-			this.userInputEnabled = false;
-			this.injectUserInputMask();
-		}
-	},
-
-	isUserInputEnabled: function() {
-		return this.userInputEnabled;
-	},
-
-	injectUserInputMask: function() {
-		this.userInputMask = new Element('div.' + this.options.className + '-mask');
-		this.userInputMask.inject(this.element);
-		return this;
-	},
-
-	destroyUserInputMask: function() {
-		this.userInputMask.destroy();
-		this.userInputMask = null;
-		return this;
-	},
-
-	didBindChildView: function(view) {
-		view.window = this;
-		view.parentView = null;
-		this.parent(view);
+	didAddViewController: function(viewController) {
+		this.rootViewController = viewController;
+		this.parent(viewController);
 		return this;
 	}
 

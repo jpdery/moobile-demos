@@ -3,44 +3,54 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-		
+
 		<title>Photo Album Demo | Moobile</title>
-		
+
 		<link rel="stylesheet" href="css/iphone.css" />
 		<link rel="stylesheet" href="css/styles.css" />
-				
+
 		<script type="text/javascript" src="js/mootools-core.js"></script>
 		<script type="text/javascript" src="js/mootools-more.js"></script>
-		
+
 		<script type="text/javascript" src="js/moobile.js"></script>
-		<script type="text/javascript" src="js/moobile-app.js"></script>
-		
+		<script type="text/javascript" src="js/app.js"></script>
+
 	</head>
 	<body>
+
 
 		<script type="text/javascript">
 		// <![CDATA["
 
 			window.addEvent('ready', function() {
-			
-				var mainWindow = new Moobile.Window('main-window').startup();
-							
-				var rootViewController = new Moobile.ViewControllerStack.Navigation(new Moobile.ViewStack);
-				//mainWindow.setRootViewController(rootViewController);
-				
-				
-				var rootViewController = mainWindow.getRootViewController();
-			
-				rootViewController.pushViewControllerFrom('views/album-list.html', new Moobile.ViewTransition.Cubic);
-			
+
+				// initialize the window controller
+				var windowController = new Moobile.WindowController('window');
+
+				// retrieve the root view controller.
+				var viewControllerStack = windowController.getRootViewController();
+
+				// push the first view into the view controller stack and
+				// specify a fade transition
+				viewControllerStack.pushViewController(new Demo.ViewController.AlbumList('views/album-list.html'), new Moobile.ViewTransition.Fade);
 
 			});
 
 		// "]]>
 		</script>
 
-		<div id="main-window">
-			<div data-role="view" data-view="Moobile.ViewStack" data-view-controller="Moobile.ViewControllerStack.Navigation"></div>
+		<div id="window">
+
+			<!--
+				this view controller could also have been added using
+				windowController.setRootViewController()
+			-->
+
+			<div data-role="view-controller" data-view-controller="Moobile.ViewControllerStack.Navigation">
+				<div data-role="view" data-view="Moobile.ViewStack">
+
+				</div>
+			</div>
 		</div>
 
 	</body>
