@@ -36,7 +36,7 @@ Demo.ViewController.AlbumList = new Class({
 
 		this.parent();
 
-		this.navigationBar.setStyle(Moobile.UI.BarStyle.DefaultTranslucent);
+		this.navigationBar.setStyle(Moobile.UI.BarStyle.BlackTranslucent);
 
 		for (var id in this.albums) {
 
@@ -107,7 +107,7 @@ Demo.ViewController.AlbumDetail = new Class({
 	init: function() {
 		this.parent();
 
-		this.navigationBar.setStyle(Moobile.UI.BarStyle.DefaultTranslucent);
+		this.navigationBar.setStyle(Moobile.UI.BarStyle.BlackTranslucent);
 
 		this.playBarButton = new Moobile.UI.BarButton();
 		this.playBarButton.setText('Play');

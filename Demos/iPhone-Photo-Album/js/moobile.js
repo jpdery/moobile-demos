@@ -795,7 +795,7 @@ provides:
 		},
 
 		isOrphan: function() {
-			return this.isChild == false();
+			return this.isChild == false;
 		},
 
 		ingest: function(string) {
@@ -2355,13 +2355,13 @@ if (!window.Moobile.UI) window.Moobile.UI = {};
 Moobile.UI.BarStyle = {
 
 	DefaultOpaque: {
-		className: 'style-blue-opaque',
+		className: 'style-default-opaque',
 		attach: function() {},
 		detach: function() {}
 	},
 
 	DefaultTranslucent: {
-		className: 'style-blue-translucent',
+		className: 'style-default-translucent',
 		attach: function() {},
 		detach: function() {}
 	},
@@ -2680,12 +2680,6 @@ Moobile.UI.BarButtonStyle = {
 
 	Active: {
 		className: 'style-active',
-		attach: function() {},
-		detach: function() {}
-	},
-
-	Black: {
-		className: 'style-black',
 		attach: function() {},
 		detach: function() {}
 	},
