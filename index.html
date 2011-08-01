@@ -111,6 +111,12 @@
 				 */
 				'#device-type .option::click': function(el) {
 					var type = el.get('data-value');
+
+					if (type == 'ipad') {
+						alert('There are no demos with the iPad yet.');
+						return;
+					}
+
 					device.use(type);
 					Cookie.write('device', type);
 
