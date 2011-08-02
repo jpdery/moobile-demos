@@ -365,7 +365,6 @@ Demo.ViewController.AlbumImage = new Class({
 
 });
 
-
 Demo.View.Image = new Class({
 
 	Extends: Moobile.View,
@@ -420,7 +419,7 @@ Demo.View.Image = new Class({
 
 		var resized = this.image.getSize();
 
-		this.image.setStyle('-webkit-transform', 'translateY(' + (frameSize.y / 2 - resized.y / 2) + 'px)');
+		this.image.setStyle('-webkit-transform', 'translateX(' + (frameSize.x / 2 - resized.x / 2) + 'px) translateY(' + (frameSize.y / 2 - resized.y / 2) + 'px)');
 
 		return this;
 	},
