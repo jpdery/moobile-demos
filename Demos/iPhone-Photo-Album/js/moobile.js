@@ -3244,14 +3244,14 @@ Moobile.View = new Class({
 
 	destroy: function() {
 
-		this.removeFromParentView();
-
 		this.detachEvents();
 		this.destroyChildViews();
 		this.destroyChildControls();
 		this.destroyChildElements();
 
 		this.release();
+
+		this.removeFromParentView();
 
 		this.parentView = null;
 		this.window = null;
@@ -3645,6 +3645,7 @@ provides:
 		scrolled: null,
 
 		build: function() {
+
 			this.parent();
 
 			this.addClass(this.options.className + '-scroll');
@@ -3703,7 +3704,7 @@ provides:
 				this.updateScrollerAutomatically(false);
 				this.scrolled = this.scrollableContent.getStyle('-webkit-transform');
 				this.scrolled = this.scrolled.match(/translate3d\(-*(\d+)px, -*(\d+)px, -*(\d+)px\)/);
-				this.scrolled = this.scrolled[2];
+				if (this.scrolled) this.scrolled = this.scrolled[2];
 				this.scroller.destroy();
 				this.scroller = null;
 			}
@@ -4288,6 +4289,8 @@ Moobile.ViewController = new Class({
 		Class.Binds
 	],
 
+	$started: false,
+
 	name: null,
 
 	window: null,
@@ -4307,8 +4310,6 @@ Moobile.ViewController = new Class({
 	parentViewController: null,
 
 	navigationBar: null,
-
-	started: false,
 
 	initialize: function(viewSource) {
 
@@ -4359,8 +4360,8 @@ Moobile.ViewController = new Class({
 	},
 
 	startup: function() {
-		if (this.started == false) {
-			this.started = true;
+		if (this.$started == false) {
+			this.$started = true;
 			this.window = this.view.window;
 			this.init();
 			this.attachEvents();
@@ -4369,22 +4370,28 @@ Moobile.ViewController = new Class({
 	},
 
 	destroy: function() {
-		this.started = false;
+
 		this.detachEvents();
 		this.release();
-		this.window = null;
+
 		this.view.destroy();
 		this.view = null;
+
 		this.viewTransition = null;
 		this.viewControllerStack = null;
 		this.viewControllerPanel = null;
 		this.parentViewController = null;
+
 		this.navigationBar = null;
+		this.window = null;
+
+		this.$started = false;
+
 		return this;
 	},
 
-	isStarted: function() {
-		return this.started;
+	isstarted: function() {
+		return this.$started;
 	},
 
 	isViewLoaded: function() {
@@ -4879,6 +4886,8 @@ provides:
 ...
 */
 
+if (!window.$moobile) window.$moobile = {};
+
 Moobile.Window = new Class({
 
 	Extends: Moobile.View,
@@ -4889,6 +4898,24 @@ Moobile.Window = new Class({
 
 	options: {
 		className: 'window'
+	},
+
+	init: function() {
+		this.parent();
+		window.$moobile.window = this;
+		return this;
+	},
+
+	attachEvents: function() {
+		window.addEvent('orientationchange', this.bound('onOrientationChange'));
+		this.parent();
+		return this;
+	},
+
+	detachEvents: function() {
+		window.removeEvent('orientationchange', this.bound('onOrientationChange'));
+		this.parent();
+		return this;
 	},
 
 	filterChildView: function(element) {
@@ -4939,6 +4966,10 @@ Moobile.Window = new Class({
 		view.parentView = null;
 		this.parent(view);
 		return this;
+	},
+
+	onOrientationChange: function() {
+		this.fireEvent('orientationchange', this.getOrientation());
 	}
 
 });
@@ -4979,6 +5010,7 @@ Moobile.WindowController = new Class({
 	startup: function() {
 		this.parent();
 		this.window = this.view;
+		this.window.startup();
 		return this;
 	},
 

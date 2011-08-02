@@ -1,5 +1,6 @@
 window.Demo = {};
 window.Demo.ViewController = {};
+window.Demo.View = {};
 
 Demo.ViewController.AlbumList = new Class({
 
@@ -89,7 +90,7 @@ Demo.ViewController.AlbumList = new Class({
 	showAlbum: function(album) {
 		var viewController = new Demo.ViewController.AlbumDetail('views/album-detail.html');
 		viewController.setAlbum(album);
-		this.viewControllerStack.pushViewController(viewController, new Moobile.ViewTransition.Fade);
+		this.viewControllerStack.pushViewController(viewController);
 		return this;
 	},
 
@@ -181,8 +182,8 @@ Demo.ViewController.AlbumDetail = new Class({
 		return this;
 	},
 
-	showImage: function(image) {
-		var viewController = new Demo.ViewController.Image('views/image.html');
+	showAlbumImage: function(image) {
+		var viewController = new Demo.ViewController.AlbumImage('views/album-image.html');
 		viewController.setAlbum(this.album);
 		viewController.setImage(image);
 		this.viewControllerStack.pushViewController(viewController);
@@ -200,7 +201,7 @@ Demo.ViewController.AlbumDetail = new Class({
 
 	onImageClick: function(e) {
 		var image = this.album.images[e.target.name];
-		if (image) this.showImage(image);
+		if (image) this.showAlbumImage(image);
 		return this;
 	},
 
@@ -216,62 +217,126 @@ Demo.ViewController.AlbumDetail = new Class({
 
 });
 
-Demo.ViewController.Image = new Class({
+Demo.ViewController.AlbumImage = new Class({
 
 	Extends: Moobile.ViewController,
 
+	album: null,
+
 	image: null,
 
-	album: null,
+	imageIndex: 0,
+
+	slidesView: null,
+
+	slidesDelay: 1500,
+
+	slideShowRunning: null,
+
+	slideShowTimer: null,
 
 	playBarButton: null,
 
 	init: function() {
 
-		 this.parent();
+		this.parent();
 
 		this.navigationBar.setStyle(Moobile.UI.BarStyle.BlackTranslucent);
 
 		this.playBarButton = new Moobile.UI.BarButton();
 		this.playBarButton.setText('Play');
-		this.playBarButton.addEvent('click', this.bound('onPlayBarButtonClick'));
 
 		this.navigationBar.navigationItem.setRightBarButton(this.playBarButton);
 		this.navigationBar.navigationItem.getLeftBarButton().setText('Back');
 
-		this.view.image.src = this.image;
+		this.imageIndex = this.album.images.indexOf(this.image);
 
-		this.position();
+		this.slidesView = this.view.slidesView;
+
+		var imageView = new Demo.View.Image();
+
+		this.slidesView.addChildView(imageView);
+
+		imageView.setImage(this.image);
+		imageView.center();
+
+		this.updateNavigationBarTitle();
 
 		return this;
 	},
 
-	position: function() {
-		var size = this.view.image.getSize();
-		var view = this.view.getSize();
+	attachEvents: function() {
+		this.playBarButton.addEvent('click', this.bound('onPlayBarButtonClick'));
+		this.parent();
+		return this;
+	},
 
-		if (size.x > view.x) {
-			this.view.image.setStyle('width', view.x);
-			this.view.image.setStyle('height', view.x * size.y / size.x);
-		} else if (size.y > view.y) {
-			this.view.image.setStyle('height', view.y);
-			this.view.image.setStyle('width', view.y * size.x / size.y);
+	detachEvents: function() {
+		this.playBarButton.removeEvent('click', this.bound('onPlayBarButtonClick'));
+		this.parent();
+		return this;
+	},
+
+	playSlideShow: function() {
+		this.slideShowRunning = true;
+		this.playBarButton.setText('Stop');
+		this.slide();
+		return this;
+	},
+
+	stopSlideShow: function() {
+		clearTimeout(this.slideShowTimer);
+		this.slideShowRunning = false;
+		this.playBarButton.setText('Play');
+		return this;
+	},
+
+	slide: function() {
+
+		var childViews = this.slidesView.getChildViews();
+
+		var viewToHide = childViews[0];
+		var viewToShow = new Demo.View.Image();
+
+		this.slidesView.addChildView(viewToShow);
+
+		this.imageIndex++;
+
+		var image = this.album.images[this.imageIndex];
+		if (image == undefined) {
+			image = this.album.images[0];
+			this.imageIndex = 0;
 		}
 
-		this.view.image.position({ relativeTo: this.view.content });
+		var loader = new Image();
+		loader.src = image;
+		loader.addEvent('load', function() {
 
+			viewToShow.setImage(image);
+			viewToShow.center();
+
+			var viewTransition = new Moobile.ViewTransition.Cubic;
+			viewTransition.addEvent('complete:once', function() {
+
+				viewToHide.removeFromParentView();
+				viewToHide.destroy();
+				viewToHide = null;
+
+				if (this.slideShowRunning)
+					this.slideShowTimer = this.slide.delay(this.slidesDelay, this);
+
+			}.bind(this));
+
+			viewTransition.enter(viewToShow, viewToHide, this.slidesView);
+
+			this.updateNavigationBarTitle();
+
+		}.bind(this));
+	},
+
+	updateNavigationBarTitle: function() {
+		this.navigationBar.navigationItem.setTitle(this.imageIndex + 1 + ' of ' + this.album.images.length);
 		return this;
-	},
-
-	showSlideShow: function() {
-		var viewController = new Demo.ViewController.SlideShow('views/slideshow.html');
-		viewController.setImage(this.image);
-		viewController.setAlbum(this.album);
-		this.viewControllerStack.pushViewController(viewController);
-	},
-
-	getTitle: function() {
-		return (this.album.images.indexOf(this.image) + 1) + ' of ' + this.album.images.length;
 	},
 
 	setAlbum: function(album) {
@@ -285,116 +350,89 @@ Demo.ViewController.Image = new Class({
 	},
 
 	onPlayBarButtonClick: function() {
-		this.showSlideShow();
+		if (this.slideShowRunning) {
+			this.stopSlideShow();
+		} else {
+			this.playSlideShow();
+		}
+
 	}
 
 });
 
-Demo.ViewController.SlideShow = new Class({
 
-	Extends: Moobile.ViewController,
+Demo.View.Image = new Class({
+
+	Extends: Moobile.View,
 
 	image: null,
 
-	album: null,
-
-	timer: null,
-
-	currentImageIndex: 0,
-
-	rootView: null,
+	build: function() {
+		this.parent();
+		this.image = new Element('img');
+		this.addChildElement(this.image);
+		return this;
+	},
 
 	init: function() {
+		this.parent();
+		this.addClass('image-view');
+		return this;
+	},
 
-		this.parent()
+	attachEvents: function() {
+		this.window.addEvent('orientationchange', this.bound('onOrientationChange'));
+		this.parent();
+		return this;
+	},
 
-		this.navigationBar.setStyle(Moobile.UI.BarStyle.BlackTranslucent);
-
-		this.navigationBar.navigationItem.getLeftBarButton().setText('Back');
-
-		this.currentImageIndex = this.album.images.indexOf(this.image);
-
-		this.rootView = new Moobile.View();
-		this.view.addChildView(this.rootView);
-
-		this.album.images.each(function(source, i) {
-
-			var childView = new Moobile.View();
-			var childViewImage = new Element('img');
-
-			childViewImage.src = source;
-			childView.addChildElement(childViewImage);
-
-			this.rootView.addChildView(childView);
-
-			var size = childViewImage.getSize();
-			var view = childView.getSize();
-
-			if (size.x > view.x) {
-				childViewImage.setStyle('width', view.x);
-				childViewImage.setStyle('height', view.x * size.y / size.x);
-			} else if (size.y > view.y) {
-				childViewImage.setStyle('height', view.y);
-				childViewImage.setStyle('width', view.y * size.x / size.y);
-			}
-
-			childViewImage.position({ relativeTo: childView.content });
-
-			if (this.currentImageIndex == i) {
-				childView.show();
-			} else {
-				childView.hide();
-			}
-
-		}, this);
-
-		(function() {
-			this.timer = this.slide.periodical(1000, this);
-		}).delay(1000, this);
-
+	detachEvents: function() {
+		this.window.removeEvent('orientationchange', this.bound('onOrientationChange'));
+		this.parent();
 		return this;
 	},
 
 	release: function() {
-		clearTimeout(this.timer);
+		this.parent();
+		this.image = null;
+		return this;
 	},
 
-	slide: function() {
+	center: function() {
 
-		var viewToHide = this.rootView.childViews[this.currentImageIndex];
-		var viewToShow = this.rootView.childViews[this.currentImageIndex + 1];
+		this.image.setStyle('top', null);
+		this.image.setStyle('height', 'auto');
+		this.image.setStyle('width', 'auto');
 
-		this.currentImageIndex++;
+		var frameSize = this.getSize();
+		var imageSize = this.image.getSize();
 
-		if (!viewToShow) {
-			viewToShow = this.rootView.childViews[0];
-			viewToShow.inject(this.rootView.childViews[this.rootView.childViews.length - 1], 'after');
-			this.currentImageIndex = 0;
+		if (imageSize.x >= frameSize.x) {
+			this.image.setStyle('width', frameSize.x);
+		} else if (imageSize.y >= frameSize.y) {
+			this.image.setStyle('height', frameSize.y);
 		}
 
-		viewToShow.show();
+		var resized = this.image.getSize();
 
+		this.image.setStyle('-webkit-transform', 'translateY(' + (frameSize.y / 2 - resized.y / 2) + 'px)');
 
-		var transition = new Moobile.ViewTransition.Cubic;
-		transition.enter(viewToShow, viewToHide, this.rootView);
-		transition.addEvent('complete:once', function() {
-			viewToHide.hide();
-		});
-
-	},
-
-	setAlbum: function(album) {
-		this.album = album;
 		return this;
 	},
 
-	setImage: function(image) {
-		this.image = image;
+	setImage: function(src) {
+		this.image.set('src', src);
 		return this;
 	},
 
-	getTitle: function() {
-		return 'SlideShow';
+	getImage: function() {
+		return this.image.get('src');
+	},
+
+	onOrientationChange: function(orientation) {
+		this.center();
+		console.log('Changed orientation');
+		return this;
 	}
 
 });

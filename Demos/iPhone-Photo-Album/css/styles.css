@@ -44,6 +44,20 @@
 	-webkit-transform: translateX(0px) translateY(0px) !important;
 }
 
+/* Album Image View
+-----------------------------------------------------------------------------*/
+
+.album-image-view {
+	background: #000000;
+}
+
+.album-image-view .slides-view {
+	background: #000000;
+	left: 0px;
+	position: absolute;
+	top: 0px;
+}
+
 /* Image View
 -----------------------------------------------------------------------------*/
 
@@ -51,8 +65,11 @@
 	background: #000000;
 }
 
-.image-view .view-content img {
+.image-view img {
 	display: block;
+	position: absolute;
+	top: 0px;
+	left: 0px;
 }
 
 /* SlideShow View
