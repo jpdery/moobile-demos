@@ -17,6 +17,7 @@
 			var defaultZoom = 'normal';
 			var defaultOrientation = 'portrait';
 			var defaultDevice = 'iphone';
+			var defaultApp = 'Demos/iPhone-Photo-Album/index.html';
 
 			var device = null;
 
@@ -68,7 +69,7 @@
 				 * Define the default app.
 				 */
 				'#device-open': function(el) {
-					var app = Cookie.read('app')
+					var app = Cookie.read('app') || defaultApp;
 					if (app) device.load(app);
 				},
 
