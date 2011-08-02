@@ -3195,6 +3195,8 @@ Moobile.View = new Class({
 
 	Extends: Moobile.UI.Element,
 
+	$started: false,
+
 	parentView: null,
 
 	window: null,
@@ -3206,8 +3208,6 @@ Moobile.View = new Class({
 	childControls: [],
 
 	childElements: [],
-
-	started: false,
 
 	options: {
 		className: 'view'
@@ -3227,8 +3227,8 @@ Moobile.View = new Class({
 	},
 
 	startup: function() {
-		if (this.started == false) {
-			this.started = true;
+		if (this.$started == false) {
+			this.$started = true;
 			this.attachChildViews();
 			this.attachChildControls();
 			this.attachChildElements();
@@ -3239,7 +3239,7 @@ Moobile.View = new Class({
 	},
 
 	isStarted: function() {
-		return this.started;
+		return this.$started;
 	},
 
 	destroy: function() {
@@ -3256,7 +3256,7 @@ Moobile.View = new Class({
 		this.parentView = null;
 		this.window = null;
 		this.content = null;
-		this.started = false;
+		this.$started = false;
 
 		this.parent();
 
@@ -4377,13 +4377,14 @@ Moobile.ViewController = new Class({
 		this.view.destroy();
 		this.view = null;
 
+		this.window = null;
+
 		this.viewTransition = null;
 		this.viewControllerStack = null;
 		this.viewControllerPanel = null;
 		this.parentViewController = null;
 
 		this.navigationBar = null;
-		this.window = null;
 
 		this.$started = false;
 

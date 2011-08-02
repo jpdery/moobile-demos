@@ -265,6 +265,12 @@ Demo.ViewController.AlbumImage = new Class({
 		return this;
 	},
 
+	release: function() {
+		this.stopSlideShow();
+		this.parent();
+		return this;
+	},
+
 	attachEvents: function() {
 		this.playBarButton.addEvent('click', this.bound('onPlayBarButtonClick'));
 		this.parent();
@@ -318,7 +324,6 @@ Demo.ViewController.AlbumImage = new Class({
 			var viewTransition = new Moobile.ViewTransition.Cubic;
 			viewTransition.addEvent('complete:once', function() {
 
-				viewToHide.removeFromParentView();
 				viewToHide.destroy();
 				viewToHide = null;
 
