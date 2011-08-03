@@ -173,17 +173,37 @@ p small {
 }
 
 .window-mask {
-	background: #ffffff;					/* Important */
+	background: rgba(255, 255, 255, 0);		/* Important */
+	bottom: 0px;							/* Important */
 	height: 100%;							/* Important */
 	left: 0px;								/* Important */
-	opacity: 0;								/* Important */
 	position: absolute;						/* Important */
 	top: 0px;								/* Important */
 	width: 100%;							/* Important */
 	z-index: 1000;							/* Important */
 }
 
-/* Landscape */
+.window-loading-indicator {
+	-webkit-border-radius: 45px;
+	-webkit-animation-name: rotate-window-loading-indicator;
+	-webkit-animation-duration: 1s;
+	-webkit-animation-iteration-count: infinite;
+	-webkit-animation-timing-function: linear;
+	background: rgba(0, 0, 0, 0.5) url(../images/loading-indicator.png) no-repeat center center;
+	height: 45px;
+	width: 45px;
+}
+
+@-webkit-keyframes rotate-window-loading-indicator {
+	from {
+		-webkit-transform: rotate(0deg);
+	}
+	to {
+		-webkit-transform: rotate(360deg);
+	}
+}
+
+/* Screen Landscape */
 @media screen and (width: 480px) and (height: 300px) {
 	.window {
 		height: 300px;

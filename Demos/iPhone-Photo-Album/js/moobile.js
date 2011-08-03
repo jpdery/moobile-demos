@@ -3315,7 +3315,6 @@ Moobile.View = new Class({
 			this.willRemoveChildView(view);
 			view.parentViewWillChange(null);
 			view.parentView = null;
-			view.window = null
 			view.parentViewDidChange(null);
 			view.dispose();
 			this.didRemoveChildView(view);
@@ -4895,14 +4894,21 @@ Moobile.Window = new Class({
 
 	inputEnabled: true,
 
-	userInputMask: null,
+	inputMask: null,
+
+	loadingIndicator: null,
+
+	loadingIndicatorTimeout: null,
 
 	options: {
-		className: 'window'
+		className: 'window',
+		showLoadingIndicator: true,
+		showLoadingIndicatorDelay: 750
 	},
 
 	init: function() {
 		this.parent();
+		this.position.delay(100);
 		window.$moobile.window = this;
 		return this;
 	},
@@ -4923,6 +4929,11 @@ Moobile.Window = new Class({
 		return element.getParent('[data-role=view]') == null;
 	},
 
+	position: function() {
+		window.scrollTo(0, 1);
+		return this;
+	},
+
 	getOrientation: function() {
 		var o = Math.abs(window.orientation);
 		switch (o) {
@@ -4934,6 +4945,10 @@ Moobile.Window = new Class({
 	enableInput: function() {
 		if (this.inputEnabled == false) {
 			this.inputEnabled = true;
+			if (this.options.showLoadingIndicator) {
+				this.hideLoadingIndicator();
+				clearTimeout(this.loadingIndicatorTimeout);
+			}
 			this.hideMask();
 		}
 		return this;
@@ -4943,22 +4958,47 @@ Moobile.Window = new Class({
 		if (this.inputEnabled == true) {
 			this.inputEnabled = false;
 			this.showMask();
+			if (this.options.showLoadingIndicator) {
+				this.loadingIndicatorTimeout = this.showLoadingIndicator.delay(this.options.showLoadingIndicatorDelay, this);
+			}
 		}
-	},
-
-	isinputEnabled: function() {
-		return this.inputEnabled;
+		return this;
 	},
 
 	showMask: function() {
-		this.userInputMask = new Element('div.' + this.options.className + '-mask');
-		this.userInputMask.inject(this.element);
+		this.inputMask = new Element('div.' + this.options.className + '-mask');
+		this.inputMask.inject(this.content);
 		return this;
 	},
 
 	hideMask: function() {
-		this.userInputMask.destroy();
-		this.userInputMask = null;
+		this.inputMask.destroy();
+		this.inputMask = null;
+		return this;
+	},
+
+	showLoadingIndicator: function() {
+		if (this.inputMask) {
+			this.inputMask.addClass('loading');
+
+			this.loadingIndicator = new Element('div.' + this.options.className + '-loading-indicator');
+			this.loadingIndicator.fade('hide');
+			this.loadingIndicator.inject(this.inputMask);
+			this.loadingIndicator.position()
+			this.loadingIndicator.fade('show');
+		}
+		return this;
+	},
+
+	hideLoadingIndicator: function() {
+		if (this.inputMask) {
+			this.inputMask.removeClass('loading');
+
+			if (this.loadingIndicator) {
+				this.loadingIndicator.destroy();
+				this.loadingIndicator = null;
+			}
+		}
 		return this;
 	},
 
@@ -4970,6 +5010,7 @@ Moobile.Window = new Class({
 	},
 
 	onOrientationChange: function() {
+		this.position();
 		this.fireEvent('orientationchange', this.getOrientation());
 	}
 
