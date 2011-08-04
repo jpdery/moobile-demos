@@ -37,6 +37,10 @@
 	width: 76px;
 }
 
+.album-detail-view .image.down {
+	opacity: 0.5;
+}
+
 .album-detail-view.reposition-images .image {
 	-webkit-transition-property: -webkit-transform;
 	-webkit-transition-duration: 500ms;

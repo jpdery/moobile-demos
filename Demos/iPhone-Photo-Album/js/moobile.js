@@ -3213,11 +3213,6 @@ Moobile.View = new Class({
 		className: 'view'
 	},
 
-	initialize: function(element, options) {
-		this.parent(element, options);
-		return this;
-	},
-
 	build: function() {
 		this.parent();
 		this.content = new Element('div.' + this.options.className + '-content');
@@ -3244,21 +3239,24 @@ Moobile.View = new Class({
 
 	destroy: function() {
 
-		this.detachEvents();
-		this.destroyChildViews();
-		this.destroyChildControls();
-		this.destroyChildElements();
+		if (this.$started) {
+			this.$started = false;
 
-		this.release();
+			this.detachEvents();
+			this.destroyChildViews();
+			this.destroyChildControls();
+			this.destroyChildElements();
 
-		this.removeFromParentView();
+			this.release();
 
-		this.parentView = null;
-		this.window = null;
-		this.content = null;
-		this.$started = false;
+			this.removeFromParentView();
 
-		this.parent();
+			this.parentView = null;
+			this.window = null;
+			this.content = null;
+
+			this.parent();
+		}
 
 		return this;
 	},
@@ -4310,7 +4308,9 @@ Moobile.ViewController = new Class({
 
 	navigationBar: null,
 
-	initialize: function(viewSource) {
+	initialize: function(viewSource, options) {
+
+		this.setOptions(options);
 
 		var viewElement = document.id(viewSource);
 		if (viewElement) {
@@ -4370,22 +4370,24 @@ Moobile.ViewController = new Class({
 
 	destroy: function() {
 
-		this.detachEvents();
-		this.release();
+		if (this.$started) {
+			this.$started = false;
 
-		this.view.destroy();
-		this.view = null;
+			this.detachEvents();
+			this.release();
 
-		this.window = null;
+			this.view.destroy();
+			this.view = null;
 
-		this.viewTransition = null;
-		this.viewControllerStack = null;
-		this.viewControllerPanel = null;
-		this.parentViewController = null;
+			this.window = null;
 
-		this.navigationBar = null;
+			this.viewTransition = null;
+			this.viewControllerStack = null;
+			this.viewControllerPanel = null;
+			this.parentViewController = null;
 
-		this.$started = false;
+			this.navigationBar = null;
+		}
 
 		return this;
 	},
@@ -4902,25 +4904,47 @@ Moobile.Window = new Class({
 
 	options: {
 		className: 'window',
-		showLoadingIndicator: true,
-		showLoadingIndicatorDelay: 750
+		showLoadingIndicator: false,
+		showLoadingIndicatorDelay: 0
 	},
 
-	init: function() {
-		this.parent();
-		this.position.delay(100);
+	startup: function() {
+
 		window.$moobile.window = this;
+
+		if (this.$started == false) {
+			this.$started = true;
+			this.init();
+			this.attachEvents();
+		}
+
+		return this;
+	},
+
+	destroy: function() {
+
+		window.$moobile = null;
+
+		if (this.$started == true) {
+			this.$started = false;
+			this.detachEvents();
+			this.release();
+			this.content = null;
+		}
+
 		return this;
 	},
 
 	attachEvents: function() {
-		window.addEvent('orientationchange', this.bound('onOrientationChange'));
+		window.addEvent('orientationchange', this.bound('onWindowOrientationChange'));
+		window.addEvent('load', this.bound('onWindowLoad'));
 		this.parent();
 		return this;
 	},
 
 	detachEvents: function() {
-		window.removeEvent('orientationchange', this.bound('onOrientationChange'));
+		window.removeEvent('orientationchange', this.bound('onWindowOrientationChange'));
+		window.removeEvent('load', this.bound('onWindowLoad'));
 		this.parent();
 		return this;
 	},
@@ -4980,7 +5004,6 @@ Moobile.Window = new Class({
 	showLoadingIndicator: function() {
 		if (this.inputMask) {
 			this.inputMask.addClass('loading');
-
 			this.loadingIndicator = new Element('div.' + this.options.className + '-loading-indicator');
 			this.loadingIndicator.fade('hide');
 			this.loadingIndicator.inject(this.inputMask);
@@ -5009,9 +5032,14 @@ Moobile.Window = new Class({
 		return this;
 	},
 
-	onOrientationChange: function() {
+	onWindowOrientationChange: function() {
 		this.position();
 		this.fireEvent('orientationchange', this.getOrientation());
+	},
+
+	onWindowLoad: function(e) {
+		this.position.delay(100);
+		return this;
 	}
 
 });
@@ -5043,21 +5071,16 @@ Moobile.WindowController = new Class({
 
 	rootViewController: null,
 
-	initialize: function(viewElement) {
-		this.loadView(viewElement);
+	initialize: function(viewElement, options) {
+		this.parent(viewElement, options);
+		this.window = this.view;
+		this.window.startup();
 		this.startup();
 		return this;
 	},
 
-	startup: function() {
-		this.parent();
-		this.window = this.view;
-		this.window.startup();
-		return this;
-	},
-
 	loadView: function(viewElement) {
-		this.view = new Moobile.Window(viewElement);
+		this.view = new Moobile.Window(viewElement, this.options);
 		return this;
 	},
 

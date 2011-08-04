@@ -321,9 +321,7 @@ Demo.ViewController.AlbumImage = new Class({
 			viewToShow.setImage(image);
 			viewToShow.center();
 
-			var viewTransition = Browser.chrome ?
-				new Moobile.ViewTransition.Fade :
-				new Moobile.ViewTransition.Cubic;
+			var viewTransition = new Moobile.ViewTransition.Cubic;
 
 			viewTransition.addEvent('complete:once', function() {
 
