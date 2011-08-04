@@ -5038,7 +5038,7 @@ Moobile.Window = new Class({
 	},
 
 	onWindowLoad: function(e) {
-		this.position.delay(100);
+		this.position.delay(250);
 		return this;
 	}
 
@@ -5092,8 +5092,6 @@ Moobile.WindowController = new Class({
 
 		if (this.rootViewController) {
 			this.viewController.removeViewController(this.rootViewController);
-			this.rootViewController.view.destroy();
-			this.rootViewController.view = null;
 			this.rootViewController.destroy();
 			this.rootViewController = null;
 		}
